@@ -1145,4 +1145,4 @@ if ('serviceWorker' in navigator) {
 document.addEventListener('DOMContentLoaded', init);
 
 // © 2026 ملاحظاتي - جميع الحقوق محفوظة
-// Developed by [اسمك]
+// Developed by Anas Harb Salah Al-Qadomi
