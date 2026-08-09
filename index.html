@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#F5F0E8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ملاحظاتي">
+<title>ملاحظاتي - دفترك الذكي</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Rakkas&family=Noto+Naskh+Arabic:wght@400;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#F5F0E8;--paper:#FFFBF2;--ink:#2C2420;--accent:#D4A574;--danger:#C75B5B;--success:#6B9E75;--blue-ink:#1E3A5F;--red-ink:#B85450;--green-ink:#4A7C59;--black-ink:#2C2420;--radius:16px;--radius-sm:12px}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}
+.app-container{max-width:480px;margin:0 auto;min-height:100vh;position:relative}
+.header{padding:16px 16px 8px;position:sticky;top:0;background:var(--bg);z-index:100;border-bottom:1px solid rgba(0,0,0,0.05)}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--accent),#C49464);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:white;font-size:18px;box-shadow:0 4px 12px rgba(212,165,116,0.3)}
+.logo-text h1{font-family:'Aref Ruqaa',serif;font-size:24px;color:var(--ink);line-height:1}
+.logo-text span{font-size:11px;color:#8B7E6A;font-weight:500}
+.icon-btn{width:40px;height:40px;border-radius:50%;border:none;background:var(--paper);color:var(--ink);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);transition:all 0.2s}
+.icon-btn:active{transform:scale(0.92)}
+.icon-btn.primary{background:linear-gradient(135deg,var(--accent),#C49464);color:white}
+.search-container{position:relative;margin-bottom:8px}
+.search-input{width:100%;padding:12px 40px 12px 16px;border:none;border-radius:var(--radius);background:var(--paper);font-family:inherit;font-size:14px;color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,0.04);outline:none}
+.search-icon{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#A09080;font-size:14px}
+.search-clear{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#A09080;font-size:13px;cursor:pointer;display:none}
+.tabs{display:flex;gap:6px;padding:0 16px 12px;overflow-x:auto}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:6px 14px;border-radius:20px;border:none;background:transparent;color:#8B7E6A;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.tab.active{background:var(--ink);color:var(--paper)}
+.content{padding:0 16px 100px}
+
+/* ===== شجرة الدفاتر/الفصول (جديد) ===== */
+.tree-section{margin-bottom:16px}
+.section-title{font-size:12px;font-weight:700;color:#8B7E6A;margin-bottom:10px;display:flex;align-items:center;gap:6px;justify-content:space-between}
+.add-notebook-btn{background:var(--paper);border:1.5px dashed var(--accent);color:var(--accent);font-size:11px;font-weight:700;padding:5px 12px;border-radius:14px;cursor:pointer}
+.nb-card{background:var(--paper);border-radius:var(--radius);margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden}
+.nb-row{display:flex;align-items:center;gap:10px;padding:14px;cursor:pointer;position:relative}
+.nb-chev{font-size:11px;color:#A09080;width:14px;text-align:center;flex-shrink:0}
+.nb-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:#EBF0F7;color:#4A6A9E}
+.nb-title{font-family:'Aref Ruqaa',serif;font-size:18px;flex:1}
+.nb-menu-btn{background:none;border:none;color:#A09080;font-size:17px;cursor:pointer;padding:4px 8px}
+.ch-wrap{padding:0 10px 10px 10px}
+.ch-row{display:flex;align-items:center;gap:9px;padding:11px 12px;margin-bottom:6px;border-radius:var(--radius-sm);background:#FFF8EA;cursor:pointer;position:relative}
+.ch-icon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;background:#F7F0E0;color:#B08A4E}
+.ch-title{font-family:'Aref Ruqaa',serif;font-size:15px;flex:1}
+.ch-menu-btn{background:none;border:none;color:#A09080;font-size:15px;cursor:pointer;padding:3px 6px}
+.notes-under-chapter{padding:0 8px 6px 26px;display:flex;flex-direction:column;gap:6px}
+.mini-note-row{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:10px;background:var(--paper);cursor:pointer;font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,0.03)}
+.mini-note-row i{color:#A09080;font-size:11px}
+.dropdown-menu{position:absolute;left:10px;top:42px;background:var(--ink);border-radius:10px;overflow:hidden;z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.3);min-width:150px}
+.dropdown-menu button{display:block;width:100%;text-align:right;background:none;border:none;color:#fff;padding:11px 16px;font-size:12px;cursor:pointer;font-family:inherit}
+.dropdown-menu button:hover{background:rgba(255,255,255,.12)}
+.dropdown-menu button.danger{color:#F0A79C}
+.tree-empty{text-align:center;padding:30px 20px;color:#A09080;font-size:13px}
+/* ===== نهاية إضافات الشجرة ===== */
+
+.folders-section{margin-bottom:16px}
+.folders-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.folder-card{background:var(--paper);border-radius:var(--radius);padding:14px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.04);border:2px solid transparent;transition:all 0.2s;position:relative;overflow:hidden}
+.folder-card:active{transform:scale(0.97)}
+.folder-card.active-folder{border-color:var(--accent)}
+.folder-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:8px}
+.folder-name{font-size:13px;font-weight:700;margin-bottom:2px}
+.folder-count{font-size:11px;color:#8B7E6A}
+.notes-list{display:flex;flex-direction:column;gap:10px}
+.note-card{background:var(--paper);border-radius:var(--radius);padding:16px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.04);border-right:3px solid transparent;transition:all 0.2s;position:relative}
+.note-card:active{transform:scale(0.98)}
+.note-card.pinned{border-right-color:var(--accent)}
+.note-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.note-title{font-family:'Aref Ruqaa',serif;font-size:20px;font-weight:700;color:var(--ink);line-height:1.3;flex:1}
+.note-pin{color:var(--accent);font-size:14px;margin-right:6px}
+.note-preview{font-family:'Aref Ruqaa',serif;font-size:14px;color:#5A4E42;line-height:1.8;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.note-footer{display:flex;justify-content:space-between;align-items:center}
+.note-date{font-size:11px;color:#A09080;display:flex;align-items:center;gap:4px}
+.note-crumb{font-size:10px;color:#A09080;background:#F0EBE0;padding:2px 8px;border-radius:8px}
+.note-tags{display:flex;gap:4px;flex-wrap:wrap}
+.note-tag{padding:2px 8px;border-radius:8px;font-size:10px;font-weight:600}
+.empty-state{text-align:center;padding:50px 20px}
+.empty-icon{font-size:56px;color:#D0C8B8;margin-bottom:16px}
+.empty-title{font-family:'Aref Ruqaa',serif;font-size:26px;color:var(--ink);margin-bottom:6px}
+.empty-text{font-size:13px;color:#8B7E6A;line-height:1.7}
+.fab{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--accent),#C49464);color:white;font-size:22px;cursor:pointer;box-shadow:0 6px 18px rgba(212,165,116,0.4);display:flex;align-items:center;justify-content:center;z-index:90}
+.fab:active{transform:translateX(-50%) scale(0.92)}
+.editor-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:200;transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);overflow-y:auto;display:flex;flex-direction:column}
+.editor-screen.open{transform:translateY(0)}
+.editor-header{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(0,0,0,0.05);position:sticky;top:0;background:var(--bg);z-index:10;gap:8px}
+.editor-back,.editor-save{width:36px;height:36px;border-radius:50%;border:none;background:var(--paper);color:var(--ink);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.06);flex-shrink:0}
+.editor-save{background:linear-gradient(135deg,var(--success),#5A8E64);color:white}
+.editor-title-input{flex:1}
+.editor-title-input input{width:100%;padding:8px 14px;border:none;border-radius:var(--radius-sm);background:var(--paper);font-family:'Aref Ruqaa',serif;font-size:18px;color:var(--ink);outline:none;box-shadow:0 2px 6px rgba(0,0,0,0.04)}
+.editor-crumb{font-size:11px;color:#8B7E6A;padding:6px 16px 0}
+.editor-toolbar-scroll{display:flex;gap:6px;padding:10px 16px;overflow-x:auto;border-bottom:1px solid rgba(0,0,0,0.05);background:var(--bg)}
+.toolbar-btn{padding:6px 12px;border-radius:16px;border:none;background:var(--paper);color:var(--ink);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:4px;box-shadow:0 1px 4px rgba(0,0,0,0.04)}
+.toolbar-btn.active{background:linear-gradient(135deg,#C75B5B,#A04545);color:white}
+.toolbar-btn.gold-active{background:linear-gradient(135deg,var(--accent),#C49464);color:white}
+.toolbar-btn i{font-size:12px}
+.ink-colors{display:flex;gap:8px;padding:10px 16px;align-items:center}
+.ink-label{font-size:11px;color:#8B7E6A;font-weight:600;margin-left:6px}
+.ink-option{width:24px;height:24px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:all 0.2s}
+.ink-option.selected{border-color:var(--ink);transform:scale(1.15);box-shadow:0 2px 6px rgba(0,0,0,0.15)}
+.paper-bg{display:flex;gap:8px;padding:0 16px 10px;align-items:center}
+.paper-label{font-size:11px;color:#8B7E6A;font-weight:600;margin-left:6px}
+.paper-option{padding:6px 12px;border-radius:12px;border:2px solid transparent;background:var(--paper);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+.paper-option.selected{border-color:var(--accent)}
+.editor-body{flex:1;padding:0 16px 16px;overflow-y:auto}
+.editor-textarea{width:100%;min-height:200px;padding:16px;border:none;border-radius:var(--radius);background:var(--paper);font-family:'Aref Ruqaa',serif;font-size:17px;line-height:2;color:var(--ink);resize:none;outline:none;box-shadow:0 2px 10px rgba(0,0,0,0.04);transition:min-height .2s}
+.editor-textarea.page-a4{min-height:1050px}
+.editor-textarea.lined{background-image:linear-gradient(#E8E0D0 1px,transparent 1px);background-size:100% 32px;background-attachment:local;line-height:32px;padding-top:8px}
+.editor-textarea.dotted{background-image:radial-gradient(#D0C8B8 1px,transparent 1px);background-size:20px 20px;background-attachment:local}
+.editor-textarea.grid{background-image:linear-gradient(#E8E0D0 1px,transparent 1px),linear-gradient(90deg,#E8E0D0 1px,transparent 1px);background-size:32px 32px;background-attachment:local}
+.draw-section{margin-top:12px;border-radius:var(--radius);background:var(--paper);box-shadow:0 2px 10px rgba(0,0,0,0.04);overflow:hidden}
+.draw-header{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(0,0,0,0.05)}
+.draw-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px}
+.draw-actions{display:flex;gap:6px}
+.draw-action-btn{width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--ink);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.draw-canvas{width:100%;height:200px;touch-action:none;cursor:crosshair;display:block}
+.brush-size{display:flex;gap:6px;padding:10px 16px;align-items:center}
+.size-label{font-size:11px;color:#8B7E6A;font-weight:600;margin-left:6px}
+.size-option{width:8px;height:8px;border-radius:50%;background:var(--ink);cursor:pointer;transition:all 0.2s}
+.size-option.selected{transform:scale(1.8)}
+.size-2{width:12px;height:12px}
+.size-3{width:16px;height:16px}
+.template-section{padding:6px 16px 4px}
+.template-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.template-strip::-webkit-scrollbar{display:none}
+.template-chip{flex:0 0 auto;padding:7px 14px;border-radius:20px;border:2px solid transparent;background:var(--paper);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.template-chip.selected{border-color:var(--accent)}
+.delete-modal,.settings-modal,.picker-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:300;display:none;align-items:center;justify-content:center;padding:20px}
+.delete-modal.show,.settings-modal.show,.picker-modal.show{display:flex}
+.modal-card{background:var(--paper);border-radius:var(--radius);padding:20px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.modal-text{font-size:13px;color:#8B7E6A;margin-bottom:16px;line-height:1.6}
+.modal-actions{display:flex;gap:8px}
+.modal-actions button{flex:1;padding:10px;border-radius:var(--radius-sm);border:none;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.btn-cancel{background:var(--bg);color:var(--ink)}
+.btn-confirm{background:var(--danger);color:white}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#C49464);color:white}
+.picker-option{display:flex;align-items:center;gap:10px;padding:12px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'Aref Ruqaa',serif;font-size:16px}
+.picker-option:hover{background:var(--bg)}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid rgba(0,0,0,0.05)}
+.setting-row:last-child{border:none}
+.setting-label{font-size:14px;font-weight:600}
+.setting-desc{font-size:11px;color:#8B7E6A;margin-top:2px}
+.toggle{width:44px;height:24px;border-radius:12px;background:#D0C8B8;position:relative;cursor:pointer;transition:all 0.3s;flex-shrink:0}
+.toggle.active{background:var(--success)}
+.toggle-knob{width:20px;height:20px;border-radius:50%;background:white;position:absolute;top:2px;right:2px;transition:all 0.3s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle.active .toggle-knob{right:22px}
+.premium-badge{font-size:9px;background:linear-gradient(135deg,#FFD700,#FFA500);color:#5A3A00;padding:2px 6px;border-radius:6px;font-weight:700;margin-right:4px}
+.progress-badge{font-size:9px;background:#EBF0F7;color:#4A6A9E;padding:2px 8px;border-radius:6px;font-weight:700;margin-right:4px}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--ink);color:var(--paper);padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:400;opacity:0;transition:all 0.3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.note-card,.nb-card{animation:fadeIn 0.3s ease}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px}
+::selection{background:#E8D5C0;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="app-container">
+<div id="mainScreen">
+<div class="header">
+<div class="header-top">
+<div class="logo">
+<div class="logo-icon"><i class="fas fa-feather-alt"></i></div>
+<div class="logo-text"><h1>ملاحظاتي</h1><span>دفترك الذكي</span></div>
+</div>
+<div class="header-actions">
+<button class="icon-btn" onclick="openSettings()"><i class="fas fa-cog"></i></button>
+<button class="icon-btn" onclick="addNotebookPrompt()"><i class="fas fa-folder-plus"></i></button>
+<button class="icon-btn primary" onclick="openEditor()"><i class="fas fa-plus"></i></button>
+</div>
+</div>
+<div class="search-container">
+<i class="fas fa-search search-icon"></i>
+<input type="text" class="search-input" id="searchInput" placeholder="ابحث في ملاحظاتك..." oninput="handleSearch(this.value)">
+<i class="fas fa-times search-clear" id="searchClear" onclick="clearSearch()"></i>
+</div>
+<div class="tabs" id="tabsContainer">
+<button class="tab active" onclick="filterNotes('all')">الكل</button>
+<button class="tab" onclick="filterNotes('pinned')">المثبتة</button>
+<button class="tab" onclick="filterNotes('recent')">الحديثة</button>
+</div>
+</div>
+<div class="content" id="contentArea">
+<div class="tree-section" id="treeSection">
+<div class="section-title">
+  <span><i class="fas fa-book-open"></i> دفاترك</span>
+  <button class="add-notebook-btn" onclick="addNotebookPrompt()">+ دفتر جديد</button>
+</div>
+<div id="treeContainer"></div>
+</div>
+<div class="notes-list" id="notesList" style="display:none;"></div>
+<div class="empty-state" id="emptyState" style="display:none;">
+<div class="empty-icon"><i class="fas fa-book-open"></i></div>
+<div class="empty-title">لا توجد ملاحظات</div>
+<div class="empty-text">اضغط على زر + لإنشاء ملاحظتك الأولى<br>وابدأ رحلتك مع الكتابة</div>
+</div>
+</div>
+</div>
+<div class="editor-screen" id="editorScreen">
+<div class="editor-header">
+<button class="editor-back" onclick="closeEditor()"><i class="fas fa-arrow-right"></i></button>
+<div class="editor-title-input"><input type="text" id="noteTitle" placeholder="عنوان الملاحظة..."></div>
+<button class="editor-save" onclick="saveNote()"><i class="fas fa-check"></i></button>
+</div>
+<div class="editor-crumb" id="editorCrumb"></div>
+<div class="editor-toolbar-scroll">
+<button class="toolbar-btn" id="pinBtn" onclick="togglePin()"><i class="fas fa-thumbtack"></i> تثبيت</button>
+<button class="toolbar-btn" onclick="toggleMode()"><i class="fas fa-pen" id="modeIcon"></i> <span id="modeText">رسم</span></button>
+<button class="toolbar-btn" id="pageSizeBtn" onclick="togglePageSize()"><i class="fas fa-expand"></i> <span id="pageSizeText">صفحة A4</span></button>
+<button class="toolbar-btn" id="fontBtn" onclick="cycleFont()"><i class="fas fa-font"></i> <span id="fontText">الخط</span></button>
+<button class="toolbar-btn" onclick="showFolderSelect()"><i class="fas fa-folder"></i> نقل</button>
+<button class="toolbar-btn" onclick="addTag()"><i class="fas fa-tag"></i> وسم</button>
+<button class="toolbar-btn" id="voiceBtn" onclick="toggleVoiceRecording()"><i class="fas fa-microphone"></i> اقرأ</button>
+<button class="toolbar-btn" id="emailVoiceBtn" onclick="toggleEmailVoice()"><i class="fas fa-envelope"></i> بريد صوتي</button>
+<button class="toolbar-btn" onclick="exportNote()"><i class="fas fa-image"></i> تصدير</button>
+<button class="toolbar-btn" onclick="deleteCurrentNote()" style="color:var(--danger)"><i class="fas fa-trash"></i> حذف</button>
+</div>
+<div class="ink-colors">
+<span class="ink-label">لون الحبر:</span>
+<div class="ink-option selected" style="background:var(--black-ink)" data-color="black" onclick="selectInk(this)"></div>
+<div class="ink-option" style="background:var(--blue-ink)" data-color="blue" onclick="selectInk(this)"></div>
+<div class="ink-option" style="background:var(--red-ink)" data-color="red" onclick="selectInk(this)"></div>
+<div class="ink-option" style="background:var(--green-ink)" data-color="green" onclick="selectInk(this)"></div>
+</div>
+<div class="paper-bg">
+<span class="paper-label">ورق:</span>
+<button class="paper-option selected" onclick="selectPaper(this,'plain')">نظيف</button>
+<button class="paper-option" onclick="selectPaper(this,'lined')">مخطط</button>
+<button class="paper-option" onclick="selectPaper(this,'dotted')">منقط</button>
+<button class="paper-option" onclick="selectPaper(this,'grid')">مربعات</button>
+</div>
+<div class="template-section" id="templateSection">
+<div class="template-strip">
+<button class="template-chip" onclick="applyTemplate('meeting',this)">📋 اجتماع</button>
+<button class="template-chip" onclick="applyTemplate('study',this)">📚 ملخص</button>
+<button class="template-chip" onclick="applyTemplate('journal',this)">📖 يومية</button>
+<button class="template-chip" onclick="applyTemplate('todo',this)">✅ مهام</button>
+<button class="template-chip" onclick="applyTemplate('idea',this)">💡 فكرة</button>
+<button class="template-chip" onclick="applyTemplate('empty',this)">📝 فارغ</button>
+</div>
+</div>
+<div class="editor-body">
+<textarea class="editor-textarea" id="noteContent" placeholder="اكتب ملاحظتك هنا بخط رقعة الجميل..."></textarea>
+<div class="draw-section" id="drawSection" style="display:none;">
+<div class="draw-header">
+<div class="draw-title"><i class="fas fa-pen"></i> رسم يدوي</div>
+<div class="draw-actions">
+<button class="draw-action-btn" onclick="undoDraw()" title="تراجع"><i class="fas fa-undo"></i></button>
+<button class="draw-action-btn" onclick="clearDraw()" title="مسح"><i class="fas fa-eraser"></i></button>
+</div>
+</div>
+<canvas class="draw-canvas" id="drawCanvas"></canvas>
+<div style="padding:10px 14px;">
+<button class="toolbar-btn" id="convertPenBtn" onclick="convertPenToText()" style="width:100%;justify-content:center;">
+  <i class="fas fa-magic"></i> تحويل الكتابة الإنجليزية لنص
+</button>
+<div style="font-size:10px;color:#A09080;margin-top:6px;text-align:center;">
+  ⚠️ الكلمات الإنجليزية فقط تُنظَّف بمكانها الأصلي حالياً (الأسهم والأشكال تبقى كما رسمتها) — العربية محدودة الدعم تقنياً بعد، استخدم الكيبورد للعربي بخط يد نظيف فوري
+</div>
+</div>
+<div class="brush-size">
+<span class="size-label">القلم:</span>
+<div class="size-option selected" onclick="selectBrush(2,this)"></div>
+<div class="size-option size-2" onclick="selectBrush(4,this)"></div>
+<div class="size-option size-3" onclick="selectBrush(6,this)"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="delete-modal" id="deleteModal">
+<div class="modal-card">
+<div class="modal-title"><i class="fas fa-trash-alt" style="color:var(--danger)"></i> حذف الملاحظة</div>
+<div class="modal-text">هل أنت متأكد من حذف هذه الملاحظة؟ لا يمكن التراجع عن هذا الإجراء.</div>
+<div class="modal-actions">
+<button class="btn-cancel" onclick="closeDeleteModal()">إلغاء</button>
+<button class="btn-confirm" onclick="confirmDelete()">حذف</button>
+</div>
+</div>
+</div>
+<div class="picker-modal" id="pickerModal">
+<div class="modal-card">
+<div class="modal-title" id="pickerTitle"><i class="fas fa-folder"></i> اختر</div>
+<div id="pickerOptions"></div>
+<div class="modal-actions" style="margin-top:12px">
+<button class="btn-cancel" onclick="closePicker()" style="flex:1">إلغاء</button>
+</div>
+</div>
+</div>
+<div class="settings-modal" id="settingsModal">
+<div class="modal-card">
+<div class="modal-title"><i class="fas fa-cog"></i> الإعدادات</div>
+<div class="setting-row">
+<div>
+<div class="setting-label">التصحيح الصوتي</div>
+<div class="setting-desc">تصحيح تلقائي بالصوت عند الكتابة</div>
+</div>
+<div class="toggle" id="voiceToggle" onclick="toggleVoice()"><div class="toggle-knob"></div></div>
+</div>
+<div class="setting-row">
+<div>
+<div class="setting-label">الخطوط الإضافية</div>
+<div class="setting-desc" id="fontProgressDesc">خطوط يد متنوعة</div>
+</div>
+</div>
+<div class="setting-row">
+<div>
+<div class="setting-label">المزامنة السحابية</div>
+<div class="setting-desc">حفظ ملاحظاتك في السحابة <span class="premium-badge">بريميوم</span></div>
+</div>
+<button class="btn-primary" style="padding:6px 12px;font-size:12px;border-radius:8px;">قريباً</button>
+</div>
+<div class="setting-row" onclick="openPolicies()" style="cursor:pointer;">
+<div>
+<div class="setting-label">سياسة الخصوصية وشروط الاستخدام</div>
+<div class="setting-desc">كيف نحمي بياناتك وقواعد استخدام التطبيق</div>
+</div>
+<i class="fas fa-chevron-left" style="color:#A09080;"></i>
+</div>
+<div class="setting-row">
+<div>
+<div class="setting-label">حول التطبيق</div>
+<div class="setting-desc">ملاحظاتي - دفترك الذكي v3.0</div>
+</div>
+</div>
+<div class="modal-actions" style="margin-top:16px">
+<button class="btn-primary" onclick="closeSettings()" style="flex:1">تم</button>
+</div>
+</div>
+</div>
+<div class="settings-modal" id="policiesModal">
+<div class="modal-card" style="max-height:80vh;overflow-y:auto;">
+<div class="modal-title"><i class="fas fa-shield-alt"></i> الخصوصية وشروط الاستخدام</div>
+<div style="font-size:12px;line-height:1.9;color:#5A4E42;">
+<b>سياسة الخصوصية</b><br>
+جميع ملاحظاتك، رسوماتك، وتسجيلاتك الصوتية تُحفظ <b>محلياً على جهازك فقط</b> (داخل متصفحك) — لا تُرسل أي بيانات لأي خادم خارجي في النسخة الحالية. حذف بيانات المتصفح أو إعادة تثبيت التطبيق سيؤدي لفقدان الملاحظات المحفوظة محلياً؛ يُنصح بتصدير النسخ المهمة بشكل دوري.<br><br>
+عند تفعيل "التصحيح الصوتي" أو ميزة "اقرأ"، يستخدم التطبيق خدمة التعرف على الصوت المدمجة بالمتصفح (Web Speech API)، وقد تُرسل المقاطع الصوتية لخوادم مزوّد المتصفح (مثل جوجل) لتحويلها لنص، حسب سياسة المتصفح نفسه.<br><br>
+<b>شروط الاستخدام</b><br>
+هذا التطبيق مُقدَّم "كما هو" دون أي ضمانات. المستخدم مسؤول عن نسخ ملاحظاته احتياطياً. يُمنع استخدام التطبيق لأي غرض غير قانوني.<br><br>
+<span style="color:#A09080;">⚠️ هذا نص عام مبدئي وليس استشارة قانونية — يُنصح بمراجعته مع مختص قانوني قبل النشر التجاري الفعلي، خصوصاً عند إضافة الدفع أو تسجيل الحسابات أو المزامنة السحابية لاحقاً.</span>
+</div>
+<div class="modal-actions" style="margin-top:16px">
+<button class="btn-primary" onclick="closePolicies()" style="flex:1">تم</button>
+</div>
+</div>
+</div>
+<div class="toast" id="toast"></div>
+<button class="fab" onclick="openEditor()"><i class="fas fa-plus"></i></button>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

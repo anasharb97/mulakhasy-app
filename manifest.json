@@ -1,0 +1,16 @@
+{
+  "name": "ملاحظاتي - دفترك الذكي",
+  "short_name": "ملاحظاتي",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F0E8",
+  "theme_color": "#F5F0E8",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect fill='%23D4A574' width='192' height='192' rx='32'/%3E%3Ctext x='96' y='125' font-size='90' text-anchor='middle' fill='white'%3E✎%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
