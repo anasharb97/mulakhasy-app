@@ -24,6 +24,7 @@ let canvas, ctx;
 let isDrawing = false;
 let strokes = [];
 let currentStrokePoints = null;
+let mergeTargetIndex = null;
 let cleanedStrokeIndexes = [];
 let drawHistory = [];
 let drawStep = -1;
@@ -567,6 +568,13 @@ function setupCanvas() {
   const startDraw = (e) => {
     e.preventDefault(); isDrawing = true; const p = getPos(e);
     ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    // لو بداية هذا الخط قريبة من نهاية آخر ضغطة قلم، نعتبرهم شكل واحد (رفع القلم أثناء رسم دائرة مثلاً)
+    mergeTargetIndex = null;
+    if (strokes.length) {
+      const last = strokes[strokes.length - 1];
+      const lastPoint = last[last.length - 1];
+      if (distance(p, lastPoint) < 30) mergeTargetIndex = strokes.length - 1;
+    }
     currentStrokePoints = [p];
   };
   const moveDraw = (e) => {
@@ -576,7 +584,13 @@ function setupCanvas() {
   };
   const endDraw = () => {
     if (!isDrawing) return; isDrawing = false; ctx.closePath();
-    if (currentStrokePoints && currentStrokePoints.length >= 3) strokes.push(currentStrokePoints);
+    if (currentStrokePoints && currentStrokePoints.length >= 3) {
+      if (mergeTargetIndex !== null && strokes[mergeTargetIndex]) {
+        strokes[mergeTargetIndex] = strokes[mergeTargetIndex].concat(currentStrokePoints);
+      } else {
+        strokes.push(currentStrokePoints);
+      }
+    }
     currentStrokePoints = null;
     saveDrawState();
   };
@@ -660,7 +674,7 @@ function analyzeStroke(points) {
   const w = maxX - minX, h = maxY - minY;
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
   const start = points[0], end = points[n - 1];
-  const closed = distance(start, end) < Math.max(w, h) * 0.28;
+  const closed = distance(start, end) < Math.max(w, h) * 0.4;
 
   // فحص الدائرة: تباين نصف القطر حول المركز يجب يكون صغير (كل النقاط بمسافة متقاربة عن المركز)
   const radii = points.map(p => distance(p, { x: cx, y: cy }));
@@ -669,7 +683,7 @@ function analyzeStroke(points) {
   const circularity = meanR > 0 ? Math.sqrt(variance) / meanR : 1;
   const aspect = Math.min(w, h) / Math.max(w, h || 1);
 
-  if (closed && w > 22 && h > 22 && circularity < 0.22 && aspect > 0.6) {
+  if (closed && w > 20 && h > 20 && circularity < 0.38 && aspect > 0.5) {
     return { type: 'circle', minX, minY, maxX, maxY, cx, cy, rx: w / 2, ry: h / 2 };
   }
 
