@@ -568,7 +568,6 @@ function setupCanvas() {
   const startDraw = (e) => {
     e.preventDefault(); isDrawing = true; const p = getPos(e);
     ctx.beginPath(); ctx.moveTo(p.x, p.y);
-    // لو بداية هذا الخط قريبة من نهاية آخر ضغطة قلم، نعتبرهم شكل واحد (رفع القلم أثناء رسم دائرة مثلاً)
     mergeTargetIndex = null;
     if (strokes.length) {
       const last = strokes[strokes.length - 1];
@@ -676,7 +675,6 @@ function analyzeStroke(points) {
   const start = points[0], end = points[n - 1];
   const closed = distance(start, end) < Math.max(w, h) * 0.4;
 
-  // فحص الدائرة: تباين نصف القطر حول المركز يجب يكون صغير (كل النقاط بمسافة متقاربة عن المركز)
   const radii = points.map(p => distance(p, { x: cx, y: cy }));
   const meanR = radii.reduce((a, b) => a + b, 0) / n;
   const variance = radii.reduce((a, r) => a + Math.pow(r - meanR, 2), 0) / n;
@@ -687,7 +685,6 @@ function analyzeStroke(points) {
     return { type: 'circle', minX, minY, maxX, maxY, cx, cy, rx: w / 2, ry: h / 2 };
   }
 
-  // فحص الخط المستقيم: أقصى انحراف لأي نقطة عن الخط الواصل بين البداية والنهاية
   const lineLen = distance(start, end);
   if (!closed && lineLen > 24) {
     let maxDev = 0;
@@ -707,7 +704,7 @@ function cleanupShapes() {
   if (!strokes.length) { showToast('لا توجد أشكال مرسومة لتنظيفها'); return; }
   let cleanedCount = 0;
   strokes.forEach((points, idx) => {
-    if (cleanedStrokeIndexes.includes(idx)) return; // لا نعيد تنظيف نفس الشكل مرتين
+    if (cleanedStrokeIndexes.includes(idx)) return;
     const shape = analyzeStroke(points);
     if (shape.type === 'other') return;
 
@@ -766,8 +763,6 @@ async function convertPenToText() {
 
     const readResults = (data.raw && data.raw.analyzeResult && data.raw.analyzeResult.readResults) || [];
 
-    // نبني نسخة "منظّفة" فوق الرسمة الأصلية: نمسح كل كلمة مُعترف عليها ونعيد كتابتها بخط نظيف
-    // بمكانها بالضبط، ونسيب كل شيء آخر (أسهم، دوائر، أشكال) بدون أي تغيير.
     const cleaned = document.createElement('canvas');
     cleaned.width = canvas.width;
     cleaned.height = canvas.height;
@@ -784,9 +779,7 @@ async function convertPenToText() {
           const ys = [box[1], box[3], box[5], box[7]];
           const x = Math.min(...xs), y = Math.min(...ys);
           const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
-          // مسح الكتابة الأصلية بمكان هذي الكلمة فقط (نعيدها شفافة، فيبان لون/نقشة الورقة الحقيقية تحتها)
           cctx.clearRect(x - 3, y - 3, w + 6, h + 6);
-          // إعادة كتابتها بخط نظيف بنفس المكان والحجم التقريبي
           cctx.fillStyle = INK_COLORS[selectedInk] || '#24303D';
           cctx.font = `${Math.max(16, h * 0.9)}px 'Patrick Hand', cursive`;
           cctx.textBaseline = 'top';
@@ -796,7 +789,6 @@ async function convertPenToText() {
       });
     });
 
-    // احفظ النسخة المنظّفة كرسمة الملاحظة، واعرضها فوراً على لوحة الرسم
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1087,7 +1079,6 @@ function setupEmailRecognition() {
   };
   emailRecognition.onend = () => {
     if (isEmailRecording) {
-      // إعادة تشغيل تلقائي لو توقف بسبب صمت مؤقت بينما المستخدم لسا بوضع التسجيل
       try { emailRecognition.start(); } catch (e) {}
     }
   };
@@ -1112,7 +1103,6 @@ function toggleEmailVoice() {
     btn.innerHTML = '<i class="fas fa-envelope"></i> بريد صوتي';
     buildFormattedEmail();
   } else {
-    // أوقف تسجيل "اقرأ" العادي لو كان شغال بنفس اللحظة
     if (isRecording && recognition) { recognition.stop(); isRecording = false; updateVoiceButton(); }
     emailSegments = [];
     isEmailRecording = true;
