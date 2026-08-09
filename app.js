@@ -22,6 +22,9 @@ let isDrawMode = false;
 let brushSize = 2;
 let canvas, ctx;
 let isDrawing = false;
+let strokes = [];
+let currentStrokePoints = null;
+let cleanedStrokeIndexes = [];
 let drawHistory = [];
 let drawStep = -1;
 let recognition = null;
@@ -354,6 +357,8 @@ function openEditor(noteId = null, skipPicker = false) {
   isDrawMode = false;
   drawHistory = [];
   drawStep = -1;
+  strokes = [];
+  cleanedStrokeIndexes = [];
   isRecording = false;
 
   const launch = () => {
@@ -559,9 +564,22 @@ function setupCanvas() {
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return { x: clientX - rect.left, y: clientY - rect.top };
   };
-  const startDraw = (e) => { e.preventDefault(); isDrawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-  const moveDraw = (e) => { e.preventDefault(); if (!isDrawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
-  const endDraw = () => { if (!isDrawing) return; isDrawing = false; ctx.closePath(); saveDrawState(); };
+  const startDraw = (e) => {
+    e.preventDefault(); isDrawing = true; const p = getPos(e);
+    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    currentStrokePoints = [p];
+  };
+  const moveDraw = (e) => {
+    e.preventDefault(); if (!isDrawing) return; const p = getPos(e);
+    ctx.lineTo(p.x, p.y); ctx.stroke();
+    currentStrokePoints.push(p);
+  };
+  const endDraw = () => {
+    if (!isDrawing) return; isDrawing = false; ctx.closePath();
+    if (currentStrokePoints && currentStrokePoints.length >= 3) strokes.push(currentStrokePoints);
+    currentStrokePoints = null;
+    saveDrawState();
+  };
   canvas.addEventListener('mousedown', startDraw);
   canvas.addEventListener('mousemove', moveDraw);
   canvas.addEventListener('mouseup', endDraw);
@@ -626,8 +644,85 @@ function clearDraw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawHistory = [];
   drawStep = -1;
+  strokes = [];
+  cleanedStrokeIndexes = [];
 }
 function hasDrawing() { return isDrawMode && drawHistory.length > 0; }
+
+/* ============ تنظيف الأشكال (دوائر/خطوط) — تحليل هندسي محلي بالكامل، بدون أي خدمة خارجية ============ */
+function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+function analyzeStroke(points) {
+  const n = points.length;
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const w = maxX - minX, h = maxY - minY;
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const start = points[0], end = points[n - 1];
+  const closed = distance(start, end) < Math.max(w, h) * 0.28;
+
+  // فحص الدائرة: تباين نصف القطر حول المركز يجب يكون صغير (كل النقاط بمسافة متقاربة عن المركز)
+  const radii = points.map(p => distance(p, { x: cx, y: cy }));
+  const meanR = radii.reduce((a, b) => a + b, 0) / n;
+  const variance = radii.reduce((a, r) => a + Math.pow(r - meanR, 2), 0) / n;
+  const circularity = meanR > 0 ? Math.sqrt(variance) / meanR : 1;
+  const aspect = Math.min(w, h) / Math.max(w, h || 1);
+
+  if (closed && w > 22 && h > 22 && circularity < 0.22 && aspect > 0.6) {
+    return { type: 'circle', minX, minY, maxX, maxY, cx, cy, rx: w / 2, ry: h / 2 };
+  }
+
+  // فحص الخط المستقيم: أقصى انحراف لأي نقطة عن الخط الواصل بين البداية والنهاية
+  const lineLen = distance(start, end);
+  if (!closed && lineLen > 24) {
+    let maxDev = 0;
+    for (const p of points) {
+      const t = ((p.x - start.x) * (end.x - start.x) + (p.y - start.y) * (end.y - start.y)) / (lineLen * lineLen || 1);
+      const projX = start.x + t * (end.x - start.x), projY = start.y + t * (end.y - start.y);
+      maxDev = Math.max(maxDev, distance(p, { x: projX, y: projY }));
+    }
+    if (maxDev < Math.max(6, lineLen * 0.07)) {
+      return { type: 'line', minX, minY, maxX, maxY, start, end };
+    }
+  }
+  return { type: 'other' };
+}
+
+function cleanupShapes() {
+  if (!strokes.length) { showToast('لا توجد أشكال مرسومة لتنظيفها'); return; }
+  let cleanedCount = 0;
+  strokes.forEach((points, idx) => {
+    if (cleanedStrokeIndexes.includes(idx)) return; // لا نعيد تنظيف نفس الشكل مرتين
+    const shape = analyzeStroke(points);
+    if (shape.type === 'other') return;
+
+    const pad = 6;
+    ctx.clearRect(shape.minX - pad, shape.minY - pad, (shape.maxX - shape.minX) + pad * 2, (shape.maxY - shape.minY) + pad * 2);
+    ctx.strokeStyle = INK_COLORS[selectedInk] || '#24303D';
+    ctx.lineWidth = Math.max(2, brushSize);
+    ctx.lineCap = 'round';
+
+    if (shape.type === 'circle') {
+      ctx.beginPath();
+      ctx.ellipse(shape.cx, shape.cy, shape.rx, shape.ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (shape.type === 'line') {
+      ctx.beginPath();
+      ctx.moveTo(shape.start.x, shape.start.y);
+      ctx.lineTo(shape.end.x, shape.end.y);
+      ctx.stroke();
+    }
+    cleanedStrokeIndexes.push(idx);
+    cleanedCount++;
+  });
+  if (cleanedCount === 0) {
+    showToast('لم أميّز أشكالاً واضحة (دوائر/خطوط) بالرسمة الحالية');
+  } else {
+    saveDrawState();
+    showToast(`✅ تم تنظيف ${cleanedCount} شكل هندسي`);
+  }
+}
 
 /* ============ تحويل الكتابة بالقلم (إنجليزي حالياً) — ينظّف كل كلمة بمكانها بالضبط، ويحافظ على الأسهم/الأشكال كما هي ============ */
 async function convertPenToText() {
