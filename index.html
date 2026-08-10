@@ -123,6 +123,12 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 .draw-actions{display:flex;gap:6px}
 .draw-action-btn{width:30px;height:30px;border-radius:8px;border:none;background:var(--bg);color:var(--ink);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .draw-canvas{width:100%;height:200px;touch-action:none;cursor:crosshair;display:block}
+.page-stack{position:relative}
+.page-stack .editor-textarea{position:relative;z-index:1}
+.draw-canvas-overlay{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;pointer-events:none;z-index:2}
+.draw-canvas-overlay.pen-active{pointer-events:auto;cursor:crosshair}
+.pen-toolbar{display:flex;gap:6px;padding:10px 0;flex-wrap:wrap}
+.pen-toolbar .toolbar-btn.pen-on{background:linear-gradient(135deg,var(--accent),#C49464);color:white}
 .brush-size{display:flex;gap:6px;padding:10px 16px;align-items:center}
 .size-label{font-size:11px;color:#8B7E6A;font-weight:600;margin-left:6px}
 .size-option{width:8px;height:8px;border-radius:50%;background:var(--ink);cursor:pointer;transition:all 0.2s}
@@ -175,6 +181,7 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 <div class="logo-text"><h1>ملاحظاتي</h1><span>دفترك الذكي</span></div>
 </div>
 <div class="header-actions">
+<button class="icon-btn" style="background:linear-gradient(135deg,#FFD700,#FFA500);color:#5A3A00;" onclick="openSupport()" title="دعمنا"><i class="fas fa-heart"></i></button>
 <button class="icon-btn" onclick="openSettings()"><i class="fas fa-cog"></i></button>
 <button class="icon-btn" onclick="addNotebookPrompt()"><i class="fas fa-folder-plus"></i></button>
 <button class="icon-btn primary" onclick="openEditor()"><i class="fas fa-plus"></i></button>
@@ -216,7 +223,6 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 <div class="editor-crumb" id="editorCrumb"></div>
 <div class="editor-toolbar-scroll">
 <button class="toolbar-btn" id="pinBtn" onclick="togglePin()"><i class="fas fa-thumbtack"></i> تثبيت</button>
-<button class="toolbar-btn" onclick="toggleMode()"><i class="fas fa-pen" id="modeIcon"></i> <span id="modeText">رسم</span></button>
 <button class="toolbar-btn" id="pageSizeBtn" onclick="togglePageSize()"><i class="fas fa-expand"></i> <span id="pageSizeText">صفحة A4</span></button>
 <button class="toolbar-btn" id="fontBtn" onclick="cycleFont()"><i class="fas fa-font"></i> <span id="fontText">الخط</span></button>
 <button class="toolbar-btn" onclick="showFolderSelect()"><i class="fas fa-folder"></i> نقل</button>
@@ -251,23 +257,28 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 </div>
 </div>
 <div class="editor-body">
-<textarea class="editor-textarea" id="noteContent" placeholder="اكتب ملاحظتك هنا بخط رقعة الجميل..."></textarea>
-<div class="draw-section" id="drawSection" style="display:none;">
-<div class="draw-header">
-<div class="draw-title"><i class="fas fa-pen"></i> رسم يدوي</div>
-<div class="draw-actions">
-<button class="draw-action-btn" onclick="undoDraw()" title="تراجع"><i class="fas fa-undo"></i></button>
-<button class="draw-action-btn" onclick="clearDraw()" title="مسح"><i class="fas fa-eraser"></i></button>
+<div class="page-stack" id="pageStack">
+<textarea class="editor-textarea" id="noteContent" placeholder="اكتب ملاحظتك هنا بخط رقعة الجميل... (وفعّل القلم بالأسفل لترسم فوق نفس الصفحة)"></textarea>
+<canvas class="draw-canvas-overlay" id="drawCanvas"></canvas>
 </div>
+<div class="pen-toolbar">
+<button class="toolbar-btn" id="penToggleBtn" onclick="togglePenMode()"><i class="fas fa-pen" id="penIcon"></i> <span id="penText">فعّل القلم</span></button>
+<button class="toolbar-btn" onclick="undoDraw()"><i class="fas fa-undo"></i> تراجع</button>
+<button class="toolbar-btn" onclick="clearDraw()"><i class="fas fa-eraser"></i> مسح الرسم</button>
 </div>
-<canvas class="draw-canvas" id="drawCanvas"></canvas>
-<div style="padding:10px 14px;">
-<button class="toolbar-btn" id="processDrawingBtn" onclick="processDrawing()" style="width:100%;justify-content:center;">
-  <i class="fas fa-magic"></i> تنظيف الرسمة (أشكال + كتابة إنجليزية)
+<div style="padding:4px 0 10px;">
+<button class="toolbar-btn" id="processDrawingBtn" onclick="processDrawing()" style="width:100%;justify-content:center;margin-bottom:8px;">
+  <i class="fas fa-magic"></i> تحويل الكتابة الإنجليزية لنص
+</button>
+<button class="toolbar-btn" onclick="showComingSoon('تنظيف الأشكال')" style="width:100%;justify-content:center;margin-bottom:8px;opacity:0.6;">
+  <i class="fas fa-lock"></i> تنظيف الأشكال (قريباً)
+</button>
+<button class="toolbar-btn" onclick="showComingSoon('تحويل الكتابة العربية')" style="width:100%;justify-content:center;opacity:0.6;">
+  <i class="fas fa-lock"></i> تحويل الكتابة العربية (قريباً)
 </button>
 <div style="font-size:10px;color:#A09080;margin-top:6px;text-align:center;">
-  ⚠️ الكلمات الإنجليزية فقط تُنظَّف بمكانها الأصلي حالياً — العربية محدودة الدعم تقنياً بعد، استخدم الكيبورد للعربي بخط يد نظيف فوري<br>
-  ⚠️ تنظيف الأشكال يكتشف الدوائر والخطوط المستقيمة والأسهم تلقائياً — تجنّب رسم حروف قريبة جداً من الأشكال (أقل من 10 نقطة تقريباً) لتجنب دمجها بالخطأ، ولا يدعم المستطيلات بعد
+  ✏️ فعّل القلم وارسم بحرية فوق نفس الصفحة (بدون تنظيف تلقائي حالياً) — عطّله للرجوع للكتابة بالكيبورد بنفس المكان<br>
+  ⚠️ الكلمات الإنجليزية فقط تُنظَّف بمكانها الأصلي حالياً — العربية تُكتب بخط يد نظيف فوري عبر الكيبورد لحين إطلاق الكتابة بالقلم للعربي
 </div>
 </div>
 <div class="brush-size">
@@ -336,6 +347,34 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 </div>
 <div class="modal-actions" style="margin-top:16px">
 <button class="btn-primary" onclick="closeSettings()" style="flex:1">تم</button>
+</div>
+</div>
+</div>
+<div class="settings-modal" id="supportModal">
+<div class="modal-card">
+<div class="modal-title"><i class="fas fa-heart" style="color:#E8A33D;"></i> دعمنا</div>
+<div style="font-size:12px;color:#8B7E6A;margin-bottom:14px;">مساعدتك تخلينا نكمل تطوير الفكرة كاملة (تحويل الكتابة العربية بالقلم، وتنظيف الأشكال، وأكثر)</div>
+
+<div style="background:var(--paper);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+<div style="font-weight:700;font-size:14px;margin-bottom:6px;">🌟 النسخة البرو</div>
+<div style="font-size:11px;color:#8B7E6A;margin-bottom:10px;">خطوط إضافية غير محدودة، ألوان أكثر، قوالب متقدمة، وبريد صوتي بدون حدود</div>
+<button class="btn-primary" style="width:100%;padding:9px;font-size:13px;" onclick="showComingSoon('شراء النسخة البرو')">قريباً</button>
+</div>
+
+<div style="background:var(--paper);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+<div style="font-weight:700;font-size:14px;margin-bottom:6px;">📺 شاهد إعلان قصير</div>
+<div style="font-size:11px;color:#8B7E6A;margin-bottom:10px;">دعم بدون أي تكلفة عليك — بس بمشاهدة إعلان قصير</div>
+<button class="btn-primary" style="width:100%;padding:9px;font-size:13px;" onclick="showComingSoon('مشاهدة الإعلان')">قريباً</button>
+</div>
+
+<div style="background:var(--paper);border-radius:var(--radius-sm);padding:14px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+<div style="font-weight:700;font-size:14px;margin-bottom:6px;">💝 ادعم تطوير المشروع</div>
+<div style="font-size:11px;color:#8B7E6A;margin-bottom:10px;">تبرّع بأي مبلغ يساعدنا نستمر (بدون مقابل أو حصة — دعم بس)</div>
+<button class="btn-primary" style="width:100%;padding:9px;font-size:13px;" onclick="showComingSoon('التبرع')">قريباً</button>
+</div>
+
+<div class="modal-actions" style="margin-top:16px">
+<button class="btn-cancel" onclick="closeSupport()" style="flex:1">إغلاق</button>
 </div>
 </div>
 </div>

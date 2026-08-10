@@ -366,7 +366,6 @@ function openEditor(noteId = null, skipPicker = false) {
     const titleInput = document.getElementById('noteTitle');
     const contentInput = document.getElementById('noteContent');
     const pinBtn = document.getElementById('pinBtn');
-    const drawSection = document.getElementById('drawSection');
     const voiceBtn = document.getElementById('voiceBtn');
     if (noteId) {
       const note = appData.notes.find(n => n.id === noteId);
@@ -380,11 +379,12 @@ function openEditor(noteId = null, skipPicker = false) {
         selectedFont = note.font || 'ArefRuqaa';
         selectedNotebookId = note.notebookId;
         selectedChapterId = note.chapterId;
-        if (note.drawing) { setTimeout(() => loadDrawing(note.drawing), 350); }
+        setTimeout(() => { resizeCanvas(); if (note.drawing) loadDrawing(note.drawing); }, 350);
       }
     } else {
       titleInput.value = '';
       contentInput.value = '';
+      setTimeout(resizeCanvas, 350);
     }
     pinBtn.classList.toggle('active', isPinned);
     updateInkPicker();
@@ -394,10 +394,10 @@ function openEditor(noteId = null, skipPicker = false) {
     updatePageSizeUI();
     updateFontUI();
     updateCrumbUI();
-    drawSection.style.display = 'none';
-    contentInput.style.display = 'block';
-    document.getElementById('modeText').textContent = 'رسم';
-    document.getElementById('modeIcon').className = 'fas fa-pen';
+    canvas.classList.remove('pen-active');
+    document.getElementById('penIcon').className = 'fas fa-pen';
+    document.getElementById('penText').textContent = 'فعّل القلم';
+    document.getElementById('penToggleBtn').classList.remove('pen-on');
     if (voiceBtn) { voiceBtn.classList.remove('active'); voiceBtn.innerHTML = '<i class="fas fa-microphone"></i> اقرأ'; }
     document.getElementById('editorScreen').classList.add('open');
     setTimeout(() => { if (!noteId) titleInput.focus(); }, 300);
@@ -522,6 +522,7 @@ function setPaperClass() {
 function togglePageSize() {
   selectedPageSize = selectedPageSize === 'compact' ? 'a4' : 'compact';
   updatePageSizeUI();
+  setTimeout(resizeCanvas, 250);
 }
 function updatePageSizeUI() {
   const ta = document.getElementById('noteContent');
@@ -601,35 +602,43 @@ function setupCanvas() {
   canvas.addEventListener('touchstart', startDraw, { passive: false });
   canvas.addEventListener('touchmove', moveDraw, { passive: false });
   canvas.addEventListener('touchend', endDraw);
-  window.addEventListener('resize', () => { if (isDrawMode) resizeCanvas(); });
+  window.addEventListener('resize', () => resizeCanvas());
 }
 function resizeCanvas() {
   if (!canvas) return;
-  const parent = canvas.parentElement;
-  canvas.width = parent.clientWidth;
-  canvas.height = 200;
+  const ta = document.getElementById('noteContent');
+  const newW = ta.clientWidth, newH = ta.clientHeight;
+  if (canvas.width === newW && canvas.height === newH) return;
+  let snapshot = null;
+  if (canvas.width > 0 && canvas.height > 0 && drawHistory.length > 0) {
+    try { snapshot = canvas.toDataURL(); } catch (e) {}
+  }
+  canvas.width = newW;
+  canvas.height = newH;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = INK_COLORS[selectedInk];
   ctx.lineWidth = brushSize;
+  if (snapshot) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0);
+    img.src = snapshot;
+  }
 }
-function toggleMode() {
+function togglePenMode() {
   isDrawMode = !isDrawMode;
-  const drawSection = document.getElementById('drawSection');
-  const textarea = document.getElementById('noteContent');
-  const modeText = document.getElementById('modeText');
-  const modeIcon = document.getElementById('modeIcon');
+  canvas.classList.toggle('pen-active', isDrawMode);
+  const btn = document.getElementById('penToggleBtn');
+  const icon = document.getElementById('penIcon');
+  const text = document.getElementById('penText');
+  btn.classList.toggle('pen-on', isDrawMode);
   if (isDrawMode) {
-    textarea.style.display = 'none';
-    drawSection.style.display = 'block';
-    modeText.textContent = 'كتابة';
-    modeIcon.className = 'fas fa-keyboard';
-    setTimeout(resizeCanvas, 50);
+    resizeCanvas();
+    icon.className = 'fas fa-keyboard';
+    text.textContent = 'عطّل القلم (رجوع للكيبورد)';
   } else {
-    textarea.style.display = 'block';
-    drawSection.style.display = 'none';
-    modeText.textContent = 'رسم';
-    modeIcon.className = 'fas fa-pen';
+    icon.className = 'fas fa-pen';
+    text.textContent = 'فعّل القلم';
   }
 }
 function selectBrush(size, el) {
@@ -661,7 +670,7 @@ function clearDraw() {
   strokes = [];
   cleanedStrokeIndexes = [];
 }
-function hasDrawing() { return isDrawMode && drawHistory.length > 0; }
+function hasDrawing() { return drawHistory.length > 0; }
 
 /* ============ تنظيف الأشكال (دوائر/خطوط) — تحليل هندسي محلي بالكامل، بدون أي خدمة خارجية ============ */
 function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
@@ -775,7 +784,12 @@ function cleanupShapesCore() {
   return cleanedCount;
 }
 
-/* ============ معالجة موحّدة: تنظيف الأشكال + تحويل الكلمات الإنجليزية بضغطة واحدة ============ */
+/* ============ تنبيه "قريباً" للميزات المقفولة (لقياس اهتمام المستخدمين) ============ */
+function showComingSoon(featureName) {
+  showToast(`🔒 "${featureName}" قريباً — نعمل عليها الآن! سجّلنا اهتمامك 🚀`);
+}
+
+/* ============ تحويل الكتابة الإنجليزية بالقلم لنص — بمكانها الأصلي بالضبط ============ */
 async function processDrawing() {
   if (!hasDrawing()) { showToast('ارسم أو اكتب بالقلم أولاً'); return; }
   const btn = document.getElementById('processDrawingBtn');
@@ -783,8 +797,6 @@ async function processDrawing() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري المعالجة...';
   btn.disabled = true;
   try {
-    const shapesCleaned = cleanupShapesCore();
-
     let wordCount = 0;
     const dataUrl = canvas.toDataURL('image/png');
     const res = await fetch('/api/azure-ocr', {
@@ -832,13 +844,10 @@ async function processDrawing() {
       saveDrawState();
     }
 
-    const parts = [];
-    if (shapesCleaned > 0) parts.push(`${shapesCleaned} شكل هندسي`);
-    if (wordCount > 0) parts.push(`${wordCount} كلمة إنجليزية`);
-    if (parts.length === 0) {
-      showToast('لم أميّز أشكالاً أو كلمات إنجليزية واضحة بالرسمة الحالية');
+    if (wordCount === 0) {
+      showToast('لم يتم التعرف على كلمات إنجليزية بالرسمة الحالية');
     } else {
-      showToast(`✅ تم تنظيف ${parts.join(' و')}`);
+      showToast(`✅ تم تنظيف ${wordCount} كلمة إنجليزية`);
     }
   } catch (e) {
     showToast('❌ فشلت المعالجة: ' + e.message);
@@ -1030,6 +1039,8 @@ function openSettings() {
   document.getElementById('settingsModal').classList.add('show');
 }
 function closeSettings() { document.getElementById('settingsModal').classList.remove('show'); }
+function openSupport() { document.getElementById('supportModal').classList.add('show'); }
+function closeSupport() { document.getElementById('supportModal').classList.remove('show'); }
 function openPolicies() { document.getElementById('policiesModal').classList.add('show'); }
 function closePolicies() { document.getElementById('policiesModal').classList.remove('show'); }
 function toggleVoice() {
