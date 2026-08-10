@@ -262,15 +262,12 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 </div>
 <canvas class="draw-canvas" id="drawCanvas"></canvas>
 <div style="padding:10px 14px;">
-<button class="toolbar-btn" id="cleanupShapesBtn" onclick="cleanupShapes()" style="width:100%;justify-content:center;margin-bottom:8px;">
-  <i class="fas fa-shapes"></i> تنظيف الدوائر والخطوط
-</button>
-<button class="toolbar-btn" id="convertPenBtn" onclick="convertPenToText()" style="width:100%;justify-content:center;">
-  <i class="fas fa-magic"></i> تحويل الكتابة الإنجليزية لنص
+<button class="toolbar-btn" id="processDrawingBtn" onclick="processDrawing()" style="width:100%;justify-content:center;">
+  <i class="fas fa-magic"></i> تنظيف الرسمة (أشكال + كتابة إنجليزية)
 </button>
 <div style="font-size:10px;color:#A09080;margin-top:6px;text-align:center;">
   ⚠️ الكلمات الإنجليزية فقط تُنظَّف بمكانها الأصلي حالياً — العربية محدودة الدعم تقنياً بعد، استخدم الكيبورد للعربي بخط يد نظيف فوري<br>
-  ⚠️ تنظيف الأشكال يكتشف الدوائر والخطوط المستقيمة تلقائياً — قد يخلط أحياناً بين حرف دائري (مثل حرف يشبه الدائرة) وشكل حقيقي
+  ⚠️ تنظيف الأشكال يكتشف الدوائر والخطوط المستقيمة والأسهم تلقائياً — تجنّب رسم حروف قريبة جداً من الأشكال (أقل من 10 نقطة تقريباً) لتجنب دمجها بالخطأ، ولا يدعم المستطيلات بعد
 </div>
 </div>
 <div class="brush-size">
