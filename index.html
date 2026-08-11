@@ -11,9 +11,10 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Rakkas&family=Noto+Naskh+Arabic:wght@400;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Rakkas&family=Noto+Naskh+Arabic:wght@400;700&family=Patrick+Hand&family=Mirza:wght@700&family=Lalezar&family=Gochi+Hand&family=Yesteryear&family=Italianno&family=Herr+Von+Muellerhoff&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3427492056843688" crossorigin="anonymous"></script>
 <style>
 :root{--bg:#F5F0E8;--paper:#FFFBF2;--ink:#2C2420;--accent:#D4A574;--danger:#C75B5B;--success:#6B9E75;--blue-ink:#1E3A5F;--red-ink:#B85450;--green-ink:#4A7C59;--black-ink:#2C2420;--radius:16px;--radius-sm:12px}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -89,6 +90,10 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 .empty-title{font-family:'Aref Ruqaa',serif;font-size:26px;color:var(--ink);margin-bottom:6px}
 .empty-text{font-size:13px;color:#8B7E6A;line-height:1.7}
 .fab{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--accent),#C49464);color:white;font-size:22px;cursor:pointer;box-shadow:0 6px 18px rgba(212,165,116,0.4);display:flex;align-items:center;justify-content:center;z-index:90}
+.ad-banner-slot{margin:6px 16px 90px;background:var(--paper);border:1px dashed #D0C8B8;border-radius:10px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ad-banner-label{font-size:9px;color:#B4B2A9;flex-shrink:0}
+.ad-banner-placeholder{font-size:11px;color:#8B7E6A;flex:1;text-align:center}
+.ad-banner-close{background:none;border:none;color:#B4B2A9;font-size:11px;cursor:pointer;padding:2px 4px;flex-shrink:0}
 .fab:active{transform:translateX(-50%) scale(0.92)}
 .editor-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:200;transform:translateY(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);overflow-y:auto;display:flex;flex-direction:column}
 .editor-screen.open{transform:translateY(0)}
@@ -213,6 +218,11 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 <div class="empty-text">اضغط على زر + لإنشاء ملاحظتك الأولى<br>وابدأ رحلتك مع الكتابة</div>
 </div>
 </div>
+<div class="ad-banner-slot" id="adBannerSlot">
+<span class="ad-banner-label">إعلان</span>
+<span class="ad-banner-placeholder">مساحة إعلان — 320×50</span>
+<button class="ad-banner-close" onclick="hideAdBanner()" aria-label="إغلاق"><i class="fas fa-times"></i></button>
+</div>
 </div>
 <div class="editor-screen" id="editorScreen">
 <div class="editor-header">
@@ -224,12 +234,13 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 <div class="editor-toolbar-scroll">
 <button class="toolbar-btn" id="pinBtn" onclick="togglePin()"><i class="fas fa-thumbtack"></i> تثبيت</button>
 <button class="toolbar-btn" id="pageSizeBtn" onclick="togglePageSize()"><i class="fas fa-expand"></i> <span id="pageSizeText">صفحة A4</span></button>
-<button class="toolbar-btn" id="fontBtn" onclick="cycleFont()"><i class="fas fa-font"></i> <span id="fontText">الخط</span></button>
+<button class="toolbar-btn" id="fontBtn" onclick="openFontStore()"><i class="fas fa-font"></i> <span id="fontText">الخط</span></button>
 <button class="toolbar-btn" onclick="showFolderSelect()"><i class="fas fa-folder"></i> نقل</button>
 <button class="toolbar-btn" onclick="addTag()"><i class="fas fa-tag"></i> وسم</button>
 <button class="toolbar-btn" id="voiceBtn" onclick="toggleVoiceRecording()"><i class="fas fa-microphone"></i> اقرأ</button>
 <button class="toolbar-btn" id="emailVoiceBtn" onclick="toggleEmailVoice()"><i class="fas fa-envelope"></i> بريد صوتي</button>
-<button class="toolbar-btn" onclick="exportNote()"><i class="fas fa-image"></i> تصدير</button>
+<button class="toolbar-btn" onclick="exportNote()"><i class="fas fa-image"></i> صورة</button>
+<button class="toolbar-btn" onclick="exportNotePDF()"><i class="fas fa-file-pdf"></i> PDF</button>
 <button class="toolbar-btn" onclick="deleteCurrentNote()" style="color:var(--danger)"><i class="fas fa-trash"></i> حذف</button>
 </div>
 <div class="ink-colors">
@@ -350,10 +361,21 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 </div>
 </div>
 </div>
+<div class="settings-modal" id="fontStoreModal">
+<div class="modal-card" style="max-height:82vh;overflow-y:auto;">
+<div class="modal-title"><i class="fas fa-font" style="color:var(--accent);"></i> متجر الخطوط</div>
+<div id="fontPreviewBox" style="display:none;background:var(--bg);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;font-size:20px;text-align:center;"></div>
+<div id="fontStoreBody"></div>
+<div class="modal-actions" style="margin-top:16px">
+<button class="btn-cancel" onclick="closeFontStore()" style="flex:1">إغلاق</button>
+</div>
+</div>
+</div>
 <div class="settings-modal" id="supportModal">
 <div class="modal-card">
 <div class="modal-title"><i class="fas fa-heart" style="color:#E8A33D;"></i> دعمنا</div>
-<div style="font-size:12px;color:#8B7E6A;margin-bottom:14px;">مساعدتك تخلينا نكمل تطوير الفكرة كاملة (تحويل الكتابة العربية بالقلم، وتنظيف الأشكال، وأكثر)</div>
+<div style="font-size:12px;color:#8B7E6A;margin-bottom:6px;">مساعدتك تخلينا نكمل تطوير الفكرة كاملة (تحويل الكتابة العربية بالقلم، وتنظيف الأشكال، وأكثر)</div>
+<div style="background:#EBF0F7;border-radius:var(--radius-sm);padding:10px;font-size:11px;color:#4A6A9E;margin-bottom:14px;">🎯 هدفنا الحالي: جمع دعم كافٍ لإطلاق تحويل الكتابة العربية بالقلم رسمياً</div>
 
 <div style="background:var(--paper);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
 <div style="font-weight:700;font-size:14px;margin-bottom:6px;">🌟 النسخة البرو</div>
@@ -370,7 +392,14 @@ body{font-family:'Noto Naskh Arabic',sans-serif;background:var(--bg);color:var(-
 <div style="background:var(--paper);border-radius:var(--radius-sm);padding:14px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
 <div style="font-weight:700;font-size:14px;margin-bottom:6px;">💝 ادعم تطوير المشروع</div>
 <div style="font-size:11px;color:#8B7E6A;margin-bottom:10px;">تبرّع بأي مبلغ يساعدنا نستمر (بدون مقابل أو حصة — دعم بس)</div>
-<button class="btn-primary" style="width:100%;padding:9px;font-size:13px;" onclick="showComingSoon('التبرع')">قريباً</button>
+<button class="btn-primary" id="donationBtn" style="width:100%;padding:9px;font-size:13px;" onclick="openDonationLink()">قريباً</button>
+</div>
+
+<div style="background:var(--paper);border-radius:var(--radius-sm);padding:14px;margin-top:10px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+<div style="font-weight:700;font-size:14px;margin-bottom:6px;">🤖 مساعد الذكاء الاصطناعي (بريميوم)</div>
+<div style="font-size:11px;color:#8B7E6A;margin-bottom:10px;">صوّر ورقتك وحوّلها لخط يد منسّق، لخّص ملاحظاتك، واسأل عنها مباشرة</div>
+<div style="font-size:11px;color:#8B7E6A;margin-bottom:10px;">📷 أساسي: 10 صور/يوم — $2.99/شهر<br>📷 متقدم (+يتعلم خطك مع الوقت): 30 صورة/يوم — $5/شهر</div>
+<button class="btn-primary" style="width:100%;padding:9px;font-size:13px;" onclick="showComingSoon('مساعد الذكاء الاصطناعي')">قريباً</button>
 </div>
 
 <div class="modal-actions" style="margin-top:16px">

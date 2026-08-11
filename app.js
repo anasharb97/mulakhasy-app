@@ -34,9 +34,63 @@ let pickerCallback = null;
 
 const INK_COLORS = { black: '#2C2420', blue: '#1E3A5F', red: '#B85450', green: '#4A7C59' };
 const FONTS = [
-  { id: 'ArefRuqaa', name: 'Aref Ruqaa', family: "'Aref Ruqaa', 'Patrick Hand', serif", unlockAt: 0 },
-  { id: 'Rakkas', name: 'Rakkas', family: "'Rakkas', 'Patrick Hand', serif", unlockAt: 15 }
+  { id: 'ArefRuqaa', name: 'Aref Ruqaa', family: "'Aref Ruqaa', 'Patrick Hand', serif", tier: 'free', lang: 'ar' },
+  { id: 'Rakkas', name: 'Rakkas', family: "'Rakkas', 'Patrick Hand', serif", tier: 'unlock', unlockAt: 15, lang: 'ar' },
+  { id: 'Mirza', name: 'Mirza', family: "'Mirza', 'Patrick Hand', serif", tier: 'premium', price: 1.99, lang: 'ar' },
+  { id: 'Lalezar', name: 'Lalezar', family: "'Lalezar', 'Patrick Hand', serif", tier: 'premium', price: 1.99, lang: 'ar', badge: 'مميز' },
+  { id: 'GochiHand', name: 'Gochi Hand', family: "'Gochi Hand', 'Patrick Hand', cursive", tier: 'free', lang: 'en' },
+  { id: 'Yesteryear', name: 'Yesteryear', family: "'Yesteryear', 'Patrick Hand', cursive", tier: 'unlock', unlockAt: 15, lang: 'en' },
+  { id: 'Italianno', name: 'Italianno', family: "'Italianno', 'Patrick Hand', cursive", tier: 'premium', price: 1.99, lang: 'en' },
+  { id: 'HerrVonMuellerhoff', name: 'Herr Von Muellerhoff', family: "'Herr Von Muellerhoff', 'Patrick Hand', cursive", tier: 'premium', price: 1.99, lang: 'en', badge: 'الأكثر طلباً 🔥' }
 ];
+
+const CATALOG_FONTS_EN = [
+  { id: 'Pacifico', name: 'Pacifico', family: "'Pacifico', cursive" },
+  { id: 'Caveat', name: 'Caveat', family: "'Caveat', cursive" },
+  { id: 'DancingScript', name: 'Dancing Script', family: "'Dancing Script', cursive" },
+  { id: 'Kalam', name: 'Kalam', family: "'Kalam', cursive" },
+  { id: 'Yellowtail', name: 'Yellowtail', family: "'Yellowtail', cursive" },
+  { id: 'PermanentMarker', name: 'Permanent Marker', family: "'Permanent Marker', cursive" },
+  { id: 'ShadowsIntoLight', name: 'Shadows Into Light', family: "'Shadows Into Light', cursive" },
+  { id: 'Sacramento', name: 'Sacramento', family: "'Sacramento', cursive" },
+  { id: 'Allura', name: 'Allura', family: "'Allura', cursive" },
+  { id: 'GreatVibes', name: 'Great Vibes', family: "'Great Vibes', cursive" }
+].map(f => ({ ...f, tier: 'catalog', price: 0.99, lang: 'en' }));
+
+const CATALOG_FONTS_AR = [
+  { id: 'Lemonada', name: 'Lemonada', family: "'Lemonada', serif" },
+  { id: 'ElMessiri', name: 'El Messiri', family: "'El Messiri', serif" },
+  { id: 'Jomhuria', name: 'Jomhuria', family: "'Jomhuria', serif" },
+  { id: 'Katibeh', name: 'Katibeh', family: "'Katibeh', serif" },
+  { id: 'LalezarCat', name: 'Lalezar', family: "'Lalezar', serif" },
+  { id: 'ReemKufi', name: 'Reem Kufi', family: "'Reem Kufi', serif" },
+  { id: 'ArefRuqaaInk', name: 'Aref Ruqaa Ink', family: "'Aref Ruqaa Ink', serif" },
+  { id: 'Harmattan', name: 'Harmattan', family: "'Harmattan', serif" },
+  { id: 'Mada', name: 'Mada', family: "'Mada', serif" },
+  { id: 'Marhey', name: 'Marhey', family: "'Marhey', serif" }
+].map(f => ({ ...f, tier: 'catalog', price: 0.99, lang: 'ar' }));
+
+let catalogFontsLoaded = false;
+function ALL_FONTS_FLAT() { return [...FONTS, ...CATALOG_FONTS_EN, ...CATALOG_FONTS_AR]; }
+function loadCatalogFontsCss() {
+  if (catalogFontsLoaded) return;
+  catalogFontsLoaded = true;
+  const families = [...CATALOG_FONTS_EN, ...CATALOG_FONTS_AR].map(f => f.name.replace(/ /g, '+')).join('&family=');
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`;
+  document.head.appendChild(link);
+}
+
+function getPurchasedFonts() { try { return JSON.parse(localStorage.getItem('purchasedFonts') || '[]'); } catch (e) { return []; } }
+function getTriedFonts() { try { return JSON.parse(localStorage.getItem('triedFonts') || '[]'); } catch (e) { return []; } }
+function markFontTried(id) { const t = getTriedFonts(); if (!t.includes(id)) { t.push(id); localStorage.setItem('triedFonts', JSON.stringify(t)); } }
+
+function trackInterest(featureName) {
+  try {
+    fetch('/api/track-interest', { method: 'POST', body: JSON.stringify({ feature: featureName, at: new Date().toISOString() }) }).catch(() => {});
+  } catch (e) {}
+}
 const TEMPLATES = {
   meeting: 'اجتماع: \nالتاريخ: \nالحاضرين: \n\nالمواضيع:\n• \n\nالقرارات:\n• \n\nالمهام:\n• \n',
   study: 'الموضوع: \n\nالنقاط الرئيسية:\n• \n• \n• \n\nالملخص:\n\nالأسئلة:\n• \n',
@@ -54,6 +108,10 @@ function init() {
   setupCanvas();
   setupVoiceRecognition();
   updateSettingsUI();
+  if (DONATION_LINK) {
+    const btn = document.getElementById('donationBtn');
+    if (btn) btn.textContent = 'تبرّع الآن ❤️';
+  }
 }
 
 function loadData() {
@@ -533,24 +591,101 @@ function updatePageSizeUI() {
   txt.textContent = selectedPageSize === 'a4' ? 'صفحة A4 ✓' : 'صفحة A4';
 }
 
-/* ============ الخط (فتح تدريجي حسب عدد الملاحظات) ============ */
-function cycleFont() {
-  const notesCount = appData.noteCount || 0;
-  const options = FONTS.map(f => {
-    const locked = notesCount < f.unlockAt;
-    return { label: locked ? `${f.name} 🔒 (يفتح بعد ${f.unlockAt} ملاحظة)` : (f.id === selectedFont ? `${f.name} ✓` : f.name), value: f.id, icon: 'fa-font', locked };
-  });
-  openPicker('اختر خط الملاحظة', options, (picked) => {
-    const f = FONTS.find(x => x.id === picked.value);
-    if (picked.locked) { showToast(`هذا الخط يفتح بعد ${f.unlockAt} ملاحظة (${notesCount}/${f.unlockAt} الآن)`); return; }
-    selectedFont = f.id;
-    updateFontUI();
-    showToast(`تم اختيار خط ${f.name}`);
-  });
+/* ============ متجر الخطوط (أساسية + كتالوج + تجربة قبل الشراء) ============ */
+function fontStatus(f) {
+  const purchased = getPurchasedFonts().includes(f.id);
+  if (f.tier === 'free') return { locked: false, label: '' };
+  if (f.tier === 'unlock') {
+    const notesCount = appData.noteCount || 0;
+    if (notesCount >= f.unlockAt || purchased) return { locked: false, label: '' };
+    return { locked: true, label: `🔒 يفتح بعد ${f.unlockAt} ملاحظة (${notesCount}/${f.unlockAt})` };
+  }
+  // premium أو catalog
+  if (purchased) return { locked: false, label: '' };
+  return { locked: true, label: `🔒 $${f.price}` };
 }
+
+function renderFontRow(f) {
+  const st = fontStatus(f);
+  const tried = getTriedFonts().includes(f.id);
+  const selected = selectedFont === f.id;
+  const badge = f.badge ? `<span class="progress-badge" style="background:#FBE7C6;color:#8A5A00;">${f.badge}</span>` : '';
+  let actionsHtml = '';
+  if (!st.locked) {
+    actionsHtml = `<button class="btn-primary" style="padding:6px 14px;font-size:11px;" onclick="selectFontById('${f.id}')">${selected ? '✓ مُختار' : 'اختر'}</button>`;
+  } else {
+    const tryBtn = (f.tier !== 'unlock' && !tried) ? `<button class="btn-cancel" style="padding:6px 10px;font-size:11px;" onclick="tryFontPreview('${f.id}')">جرّب قبل ما تشتري</button>` : (f.tier !== 'unlock' ? `<span style="font-size:10px;color:#A09080;">تم التجربة ✓</span>` : '');
+    const buyBtn = f.tier !== 'unlock' ? `<button class="btn-primary" style="padding:6px 14px;font-size:11px;" onclick="showComingSoon('شراء خط ${f.name}')">${st.label}</button>` : `<span style="font-size:10px;color:#A09080;">${st.label}</span>`;
+    actionsHtml = `<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;">${tryBtn}${buyBtn}</div>`;
+  }
+  return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.05);gap:8px;">
+    <div style="flex:1;min-width:0;">
+      <div style="font-family:${f.family};font-size:18px;">${escapeHtml(f.name)} ${badge}</div>
+    </div>
+    ${actionsHtml}
+  </div>`;
+}
+
+function selectFontById(id) {
+  selectedFont = id;
+  updateFontUI();
+  closeFontStore();
+  showToast('تم اختيار الخط ✅');
+}
+
+function tryFontPreview(id) {
+  markFontTried(id);
+  const all = [...FONTS, ...CATALOG_FONTS_EN, ...CATALOG_FONTS_AR];
+  const f = all.find(x => x.id === id);
+  const box = document.getElementById('fontPreviewBox');
+  box.style.display = 'block';
+  box.style.fontFamily = f.family;
+  box.textContent = 'هذا مثال على شكل الخط — Preview of this font style';
+  renderFontStoreBody();
+  showToast('هذي تجربتك الوحيدة لهذا الخط — قيّمه قبل الشراء 👀');
+}
+
+function openFontStore() {
+  document.getElementById('fontPreviewBox').style.display = 'none';
+  renderFontStoreBody();
+  document.getElementById('fontStoreModal').classList.add('show');
+}
+function closeFontStore() { document.getElementById('fontStoreModal').classList.remove('show'); }
+
+function renderFontStoreBody() {
+  const body = document.getElementById('fontStoreBody');
+  const arBase = FONTS.filter(f => f.lang === 'ar');
+  const enBase = FONTS.filter(f => f.lang === 'en');
+  let html = `<div style="font-weight:700;font-size:13px;margin-bottom:4px;">الخطوط العربية</div>` + arBase.map(renderFontRow).join('');
+  html += `<div style="font-weight:700;font-size:13px;margin:14px 0 4px;">English Fonts</div>` + enBase.map(renderFontRow).join('');
+  html += `<div style="background:var(--paper);border-radius:var(--radius-sm);padding:12px;margin-top:14px;">
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px;">🎁 عرض الباقة</div>
+    <div style="font-size:11px;color:#8B7E6A;margin-bottom:8px;">اشترِ الخطين البريميوم بلغة واحدة معاً بسعر $2.99 بدل $3.98 (وفّر $1)</div>
+    <button class="btn-primary" style="padding:6px 14px;font-size:11px;" onclick="showComingSoon('باقة الخطين العربيين')">باقة عربي $2.99</button>
+    <button class="btn-primary" style="padding:6px 14px;font-size:11px;margin-right:6px;" onclick="showComingSoon('باقة الخطين الإنجليزيين')">باقة إنجليزي $2.99</button>
+  </div>`;
+  html += `<div style="text-align:center;margin-top:14px;">`;
+  if (!catalogFontsShown) {
+    html += `<button class="btn-cancel" style="width:100%;padding:9px;" onclick="showFontCatalog()">تصفّح 20 خط إضافي (كتالوج) →</button>`;
+  } else {
+    html += `<div style="font-weight:700;font-size:13px;margin-bottom:4px;text-align:right;">كتالوج إضافي — عربي</div>` + CATALOG_FONTS_AR.map(renderFontRow).join('');
+    html += `<div style="font-weight:700;font-size:13px;margin:14px 0 4px;text-align:right;">Additional Catalog — English</div>` + CATALOG_FONTS_EN.map(renderFontRow).join('');
+  }
+  html += `</div>`;
+  body.innerHTML = html;
+}
+
+let catalogFontsShown = false;
+function showFontCatalog() {
+  loadCatalogFontsCss();
+  catalogFontsShown = true;
+  setTimeout(renderFontStoreBody, 300); // مساحة زمنية بسيطة لتحميل ملف الخطوط قبل العرض
+}
+
 function updateFontUI() {
   const ta = document.getElementById('noteContent');
-  const f = FONTS.find(x => x.id === selectedFont) || FONTS[0];
+  const all = [...FONTS, ...CATALOG_FONTS_EN, ...CATALOG_FONTS_AR];
+  const f = all.find(x => x.id === selectedFont) || FONTS[0];
   ta.style.fontFamily = f.family;
   document.getElementById('fontText').textContent = f.name;
 }
@@ -786,6 +921,7 @@ function cleanupShapesCore() {
 
 /* ============ تنبيه "قريباً" للميزات المقفولة (لقياس اهتمام المستخدمين) ============ */
 function showComingSoon(featureName) {
+  trackInterest(featureName);
   showToast(`🔒 "${featureName}" قريباً — نعمل عليها الآن! سجّلنا اهتمامك 🚀`);
 }
 
@@ -897,7 +1033,7 @@ function renderNoteToCanvasPromise(note) {
       for (let x = 0; x < width; x += 32) { eCtx.beginPath(); eCtx.moveTo(x, 0); eCtx.lineTo(x, exportCanvas.height); eCtx.stroke(); }
       for (let y = 0; y < exportCanvas.height; y += 32) { eCtx.beginPath(); eCtx.moveTo(0, y); eCtx.lineTo(width, y); eCtx.stroke(); }
     }
-    const fontFam = (FONTS.find(f => f.id === note.font) || FONTS[0]).name;
+    const fontFam = (ALL_FONTS_FLAT().find(f => f.id === note.font) || FONTS[0]).name;
     const inkColor = INK_COLORS[note.ink || 'black'];
     eCtx.font = `bold 28px "${fontFam}", serif`;
     eCtx.fillStyle = inkColor;
@@ -945,7 +1081,7 @@ async function exportScope(scope, id) {
   showToast('تم تصدير PDF بنجاح ✅');
 }
 
-function exportNote() {
+function buildNoteExportCanvas(onReady) {
   const title = document.getElementById('noteTitle').value.trim() || 'ملاحظة';
   const content = document.getElementById('noteContent').value.trim();
   if (!content && !hasDrawing()) { showToast('لا يوجد شيء للتصدير'); return; }
@@ -972,7 +1108,7 @@ function exportNote() {
     for (let x = 0; x < width; x += 32) { eCtx.beginPath(); eCtx.moveTo(x, 0); eCtx.lineTo(x, exportCanvas.height); eCtx.stroke(); }
     for (let y = 0; y < exportCanvas.height; y += 32) { eCtx.beginPath(); eCtx.moveTo(0, y); eCtx.lineTo(width, y); eCtx.stroke(); }
   }
-  const fontFam = (FONTS.find(f => f.id === selectedFont) || FONTS[0]).name;
+  const fontFam = (ALL_FONTS_FLAT().find(f => f.id === selectedFont) || FONTS[0]).name;
   eCtx.font = `bold 28px "${fontFam}", serif`;
   eCtx.fillStyle = INK_COLORS[selectedInk];
   eCtx.textAlign = 'right';
@@ -983,8 +1119,20 @@ function exportNote() {
   if (hasDrawing()) {
     const img = new Image();
     img.src = canvas.toDataURL();
-    img.onload = () => { eCtx.drawImage(img, padding, y + 10, width - padding * 2, 200); downloadImage(exportCanvas, title); };
-  } else { downloadImage(exportCanvas, title); }
+    img.onload = () => { eCtx.drawImage(img, padding, y + 10, width - padding * 2, 200); onReady(exportCanvas, title); };
+  } else { onReady(exportCanvas, title); }
+}
+function exportNote() {
+  buildNoteExportCanvas((cv, title) => { downloadImage(cv, title); });
+}
+function exportNotePDF() {
+  buildNoteExportCanvas((cv, title) => {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ unit: 'px', format: [cv.width, cv.height] });
+    pdf.addImage(cv.toDataURL('image/png'), 'PNG', 0, 0, cv.width, cv.height);
+    pdf.save(`ملاحظة-${title.replace(/\s+/g, '-')}.pdf`);
+    showToast('تم تصدير PDF بنجاح ✅');
+  });
 }
 function downloadImage(canvas, title) {
   const link = document.createElement('a');
@@ -1032,10 +1180,10 @@ function filterNotes(filter) {
 
 function openSettings() {
   const notesCount = appData.noteCount || 0;
-  const locked = FONTS.filter(f => notesCount < f.unlockAt);
+  const locked = FONTS.filter(f => f.tier === 'unlock' && notesCount < f.unlockAt);
   document.getElementById('fontProgressDesc').textContent = locked.length
     ? `${locked[0].name}: يفتح بعد ${locked[0].unlockAt} ملاحظة (${notesCount}/${locked[0].unlockAt})`
-    : 'كل الخطوط مفتوحة! 🎉';
+    : 'كل الخطوط المجانية مفتوحة! باقي البريميوم بمتجر الخطوط 🎉';
   document.getElementById('settingsModal').classList.add('show');
 }
 function closeSettings() { document.getElementById('settingsModal').classList.remove('show'); }
@@ -1196,6 +1344,32 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+/* ============ شريط الإعلان (مكان جاهز فقط حالياً — ينتظر موافقة شبكة إعلانات حقيقية) ============ */
+function hideAdBanner() {
+  document.getElementById('adBannerSlot').style.display = 'none';
+  localStorage.setItem('adBannerHidden', '1');
+  showToast('تم إخفاء المساحة لهذي الجلسة');
+}
+(function initAdBanner() {
+  if (localStorage.getItem('adBannerHidden') === '1') {
+    document.addEventListener('DOMContentLoaded', () => {
+      const el = document.getElementById('adBannerSlot');
+      if (el) el.style.display = 'none';
+    });
+  }
+})();
+
+// رابط التبرع (Ko-fi/Buy Me a Coffee) — يُملأ هنا بمجرد إنشاء الحساب، وتصير الأزرار تفتحه فوراً بدل "قريباً"
+const DONATION_LINK = 'https://ko-fi.com/anasalqadomi';
+function openDonationLink() {
+  if (DONATION_LINK) {
+    trackInterest('التبرع (رابط حقيقي)');
+    window.open(DONATION_LINK, '_blank');
+  } else {
+    showComingSoon('التبرع');
+  }
 }
 
 if ('serviceWorker' in navigator) {
