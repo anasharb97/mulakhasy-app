@@ -1006,6 +1006,8 @@ function applyTemplate(type, el) {
   showToast('تم تطبيق القالب');
 }
 
+function pxToMM(px) { return px * 25.4 / 96; }
+
 function renderNoteToCanvasPromise(note) {
   return new Promise((resolve) => {
     const exportCanvas = document.createElement('canvas');
@@ -1072,8 +1074,8 @@ async function exportScope(scope, id) {
   const { jsPDF } = window.jspdf;
   let pdf = null;
   canvases.forEach((cv, i) => {
-    const w = cv.width, h = cv.height;
-    if (i === 0) { pdf = new jsPDF({ unit: 'px', format: [w, h] }); }
+    const w = pxToMM(cv.width), h = pxToMM(cv.height);
+    if (i === 0) { pdf = new jsPDF({ unit: 'mm', format: [w, h] }); }
     else { pdf.addPage([w, h]); }
     pdf.addImage(cv.toDataURL('image/png'), 'PNG', 0, 0, w, h);
   });
@@ -1128,8 +1130,9 @@ function exportNote() {
 function exportNotePDF() {
   buildNoteExportCanvas((cv, title) => {
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: 'px', format: [cv.width, cv.height] });
-    pdf.addImage(cv.toDataURL('image/png'), 'PNG', 0, 0, cv.width, cv.height);
+    const w = pxToMM(cv.width), h = pxToMM(cv.height);
+    const pdf = new jsPDF({ unit: 'mm', format: [w, h] });
+    pdf.addImage(cv.toDataURL('image/png'), 'PNG', 0, 0, w, h);
     pdf.save(`ملاحظة-${title.replace(/\s+/g, '-')}.pdf`);
     showToast('تم تصدير PDF بنجاح ✅');
   });
