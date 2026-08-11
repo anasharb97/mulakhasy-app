@@ -1007,6 +1007,14 @@ function applyTemplate(type, el) {
 }
 
 function pxToMM(px) { return px * 25.4 / 96; }
+const A4_W_MM = 210, A4_H_MM = 297, A4_MARGIN_MM = 10;
+function fitToA4(cv) {
+  const wmm = pxToMM(cv.width), hmm = pxToMM(cv.height);
+  const maxW = A4_W_MM - A4_MARGIN_MM * 2, maxH = A4_H_MM - A4_MARGIN_MM * 2;
+  const scale = Math.min(maxW / wmm, maxH / hmm, 1);
+  const outW = wmm * scale, outH = hmm * scale;
+  return { outW, outH, x: (A4_W_MM - outW) / 2, y: A4_MARGIN_MM };
+}
 
 function renderNoteToCanvasPromise(note) {
   return new Promise((resolve) => {
@@ -1074,10 +1082,10 @@ async function exportScope(scope, id) {
   const { jsPDF } = window.jspdf;
   let pdf = null;
   canvases.forEach((cv, i) => {
-    const w = pxToMM(cv.width), h = pxToMM(cv.height);
-    if (i === 0) { pdf = new jsPDF({ unit: 'mm', format: [w, h] }); }
-    else { pdf.addPage([w, h]); }
-    pdf.addImage(cv.toDataURL('image/png'), 'PNG', 0, 0, w, h);
+    const fit = fitToA4(cv);
+    if (i === 0) { pdf = new jsPDF({ unit: 'mm', format: 'a4' }); }
+    else { pdf.addPage('a4'); }
+    pdf.addImage(cv.toDataURL('image/png'), 'PNG', fit.x, fit.y, fit.outW, fit.outH);
   });
   pdf.save(`${fileLabel.replace(/\s+/g, '-')}.pdf`);
   showToast('تم تصدير PDF بنجاح ✅');
@@ -1130,9 +1138,9 @@ function exportNote() {
 function exportNotePDF() {
   buildNoteExportCanvas((cv, title) => {
     const { jsPDF } = window.jspdf;
-    const w = pxToMM(cv.width), h = pxToMM(cv.height);
-    const pdf = new jsPDF({ unit: 'mm', format: [w, h] });
-    pdf.addImage(cv.toDataURL('image/png'), 'PNG', 0, 0, w, h);
+    const fit = fitToA4(cv);
+    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+    pdf.addImage(cv.toDataURL('image/png'), 'PNG', fit.x, fit.y, fit.outW, fit.outH);
     pdf.save(`ملاحظة-${title.replace(/\s+/g, '-')}.pdf`);
     showToast('تم تصدير PDF بنجاح ✅');
   });
